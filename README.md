@@ -1,199 +1,298 @@
-# OIDCWarden
+# OIDCWarden - CZS Interní Verze
 
-Soft fork from [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
-Goal is to provide an OIDC compatible solution with the ultimate goal of merging features back in Vaultwarden.
+Soft fork z [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
+Cílem je poskytnout OIDC kompatibilní řešení pro interní použití v CZS (Centrum zpracování sítí).
 
-A master password is still required and not controlled by the SSO (depending on your point of view this might be a feature ;).
+Master heslo je stále vyžadováno a není kontrolováno SSO (v závislosti na vašem pohledu to může být funkce ;).
 
-Bitwarden [key connector](https://bitwarden.com/help/about-key-connector) is not supported and due to the [license](https://github.com/bitwarden/key-connector/blob/main/LICENSE.txt) it's highly unlikely that it will ever be:
+Bitwarden [key connector](https://bitwarden.com/help/about-key-connector) není podporován a kvůli [licenci](https://github.com/bitwarden/key-connector/blob/main/LICENSE.txt) je vysoce nepravděpodobné, že kdy bude:
 
 > 2.1 Commercial Module License. Subject to Your compliance with this Agreement, Bitwarden hereby grants to You a limited, non-exclusive, non-transferable, royalty-free license to use the Commercial Modules for the sole purposes of internal development and internal testing, and only in a non-production environment.
 
-## Acknowledgement
+## Rychlý Start s Docker Compose
 
-Project made possible with support from the [sponsors](https://github.com/sponsors/Timshel) and the [TU Bergakademie Freiberg](https://tu-freiberg.de/en).
-\
-Would not be possible without the maintainers and contributors of the source project [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
+Pro kompletní nastavení včetně OIDC proxy pro externí poskytovatele jako Masarykova univerzita použijte poskytnutý `docker-compose.yml`:
 
-## Versions
+```bash
+# Naklonujte repozitář
+git clone <repository-url>
+cd CZS_OIDCWarden
 
-Tagged version are based on Bitwarden web client releases, Ex: `v2024.8.3-1` is the first release compatible with web client `v2024.8.3`.
-\
-See [changelog](CHANGELOG.md) for more details.
+# Vytvořte .env soubor s vaší OIDC konfigurací
+# Viz sekce Konfigurace níže
 
-## Differences with [timshel/vaultwarden](https://github.com/timshel/vaultwarden)
+# Spusťte všechny služby
+docker-compose up -d
 
-This project was created in an effort to gain more support to maintain the [PR](https://github.com/dani-garcia/vaultwarden/pull/3899) adding OpenID Connect to Vaultwarden.
+# Přístup k OIDCWarden na http://localhost:3000
+```
 
-Main differences now:
+### Nginx OIDC Proxy Nastavení
 
-- Renamed project / changed icons
-- Abitility to release `web-vault` independantly of the [bw_web_builds](https://github.com/dani-garcia/bw_web_builds), the [timshel/vaultwarden](https://github.com/timshel/vaultwarden) will stay in sync.
+Při integraci s externími OIDC poskytovateli, kteří mají problémy s discovery endpointem (jako Masarykova univerzita `id.muni.cz`), je zahrnut vlastní Nginx proxy pro:
 
-In the long term distribution will focus on a better OpenID flow (`web-vault` `override` distribution).
+1. **Interceptování OIDC Discovery**: Poskytování kontrolované odpovědi `/.well-known/openid-configuration`
+2. **Proxy OIDC Požadavků**: Přeposílání skutečných OIDC flow požadavků na externí poskytovatele
+3. **Řešení Síťových Problémů**: Řešení Docker container networking s hostitelskými službami
 
-## Testing
+**Proč je potřeba pro MUNI OIDC:**
+- MUNI discovery endpoint vrací 500 chyby
+- OIDCWarden vyžaduje validní OIDC discovery pro fungování
+- Proxy poskytuje stabilní discovery endpoint při proxy skutečných OIDC požadavků
 
-New release are tested using Playwright integration tests. Currenttly tested flow include:
+**Zahrnuté soubory:**
+- `docker-compose.yml` - Kompletní nastavení s OIDCWarden a Nginx proxy
+- `nginx.conf` - Nginx konfigurace pro OIDC proxy
+- `.env` - Environment proměnné pro OIDC konfiguraci
 
-- Login flow using Master password and/or SSO
-- 2FA using email and TOTP (with/without SSO)
-- Role mapping (acces to admin console)
-- Organization and collection creation
-- Organization invitation using Master password and SSO
-- Organization auto-invitation
-- Organization membership role sync (Owner, admin ...)
-- Organization membership revocation
+## Poděkování
 
-Goal will be to continue to increase the test coverage but I would recommand to always deploy a specific version and always backup/test before deploying a new release.
+Projekt byl umožněn díky podpoře [sponzorů](https://github.com/sponsors/Timshel) a [TU Bergakademie Freiberg](https://tu-freiberg.de/en).
 
-## Configuration
+Nebylo by možné bez maintainerů a přispěvatelů zdrojového projektu [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
 
-See details in [SSO.md](SSO.md).
+## Verze
 
-## Features
+Tagované verze jsou založeny na Bitwarden web client releases, např. `v2024.8.3-1` je první release kompatibilní s web clientem `v2024.8.3`.
 
-Role and Organization mapping can be read from the id token or the user info endpoint.
-Sync is done by default at login and optionnaly on token refresh (this can be expensive since the client can span the endpoint).
+Viz [changelog](CHANGELOG.md) pro více detailů.
 
-- `SSO_SYNC_ON_REFRESH`: Enable to refresh role, orgs and groups on refresh_token.
+## Rozdíly s [timshel/vaultwarden](https://github.com/timshel/vaultwarden)
 
-### Role mapping
+Tento projekt byl vytvořen ve snaze získat více podpory pro udržení [PR](https://github.com/dani-garcia/vaultwarden/pull/3899) přidávající OpenID Connect do Vaultwarden.
 
-Allow to map roles from the Access token to users to grant access to `VaultWarden` `admin` console.
-Support two roles: `admin` or `user`.
+Hlavní rozdíly nyní:
 
-This feature is controlled by the following conf:
+- Přejmenovaný projekt / změněné ikony
+- Schopnost vydávat `web-vault` nezávisle na [bw_web_builds](https://github.com/dani-garcia/bw_web_builds), [timshel/vaultwarden](https://github.com/timshel/vaultwarden) zůstane synchronizovaný.
 
-- `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`
-- `SSO_ROLES_DEFAULT_TO_USER`: do not block login in case of missing or invalid roles, default is `true`.
-- `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the id token or user info (used by organization membership role too).
+V dlouhodobém horizontu se distribuce zaměří na lepší OpenID flow (`web-vault` `override` distribuce).
 
-### Organization sync
+## Testování
 
-Allow to synchronize Organization, Groups and User roles.
+Nové release jsou testovány pomocí Playwright integračních testů. Aktuálně testované flow zahrnují:
 
-#### Organization invitation
+- Login flow pomocí Master hesla a/nebo SSO
+- 2FA pomocí emailu a TOTP (s/bez SSO)
+- Role mapping (přístup k admin konzoli)
+- Vytváření organizací a kolekcí
+- Pozvánky do organizací pomocí Master hesla a SSO
+- Automatické pozvánky do organizací
+- Synchronizace rolí členství v organizaci (Owner, admin ...)
+- Odvolání členství v organizaci
 
-The organization need to be manually created first.
-Will use the email associated with the Organization to send further notifications (admin side).
+Cílem bude pokračovat ve zvyšování pokrytí testů, ale doporučuji vždy nasadit specifickou verzi a vždy zálohovat/testovat před nasazením nového release.
 
-Invitation flow will look like this:
+## Konfigurace
 
-- Decode the JWT Access token and check if a list of organization is present (default path is `/groups`).
-- Check if a matching Organization exists and if the user is not part of it.
-- if mail are activated invite the user to the Organization
-  - The user will need to click on the link in the mail he received
-  - A notification is sent to the `email` associated with the Organization that a new user is ready to join
-  - An admin will have to validate the user to finalize the user joining the org.
-- Otherwise just add the user to the Organization
-  - An admin will have to validate the user to confirm the user joining the org.
+Viz detaily v [SSO.md](SSO.md).
 
-One of the bonus of invitation is that if an organization defines a specific password policy then it will apply to new user when they set their new master password.
-If a user is part of two organizations then it will order them using the role of the user (`Owner`, `Admin`, `User` or `Manager` for now manager is last :() and return the password policy of the first one.
+### Konfigurace OIDC pro Masarykovu univerzitu
 
-This feature is controlled with the following configuration:
+Pro integraci s OIDC poskytovatelem Masarykovy univerzity (`id.muni.cz`) použijte následující konfiguraci ve vašem `.env` souboru:
 
-- `SSO_SCOPES`: Optional scope override if additionnal scopes are needed, default is `"email profile"`
-- `SSO_ORGANIZATIONS_ENABLED`: control if the mapping is done, default is `false`
-- `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read organization and groups in the id token or user info, default is `/groups`
+```bash
+# Povolit SSO
+SSO_ENABLED="true"
+SSO_ONLY="true"
+SSO_SIGNUPS_MATCH_EMAIL="true"
 
-#### Organization revocation
+# MUNI OIDC Client Konfigurace
+SSO_CLIENT_ID="váš-client-id"
+SSO_CLIENT_SECRET="váš-client-secret"
+SSO_AUTHORITY="http://localhost:8082/"
+SSO_SCOPES="openid email profile"
+SSO_FRONTEND="override"
 
-If a user is removed from the provider group, the membership will be revoked. User will lose access but no admin intervention will be needed to grant access back.
-\
-The state of the membership is kept (`invited`, `confirmed`, `accepted`) and will be restored if the user is once again added to the group/organization.
+# OIDC Endpointy (proxované přes Nginx)
+SSO_AUTHORIZATION_ENDPOINT="https://id.muni.cz/oidc/authorize"
+SSO_TOKEN_ENDPOINT="https://id.muni.cz/oidc/token"
+SSO_USERINFO_ENDPOINT="https://id.muni.cz/oidc/userinfo"
 
-This feature is controlled with the following configuration:
+# Doména a Redirect URI
+DOMAIN="http://localhost:3000"
+SSO_REDIRECT_URI="http://localhost:3000/identity/connect/oidc-signin"
+```
 
-- `SSO_ORGANIZATIONS_REVOCATION`: control if user revocation are made (default `false`).
+**Důležité:** Nastavte redirect URI ve vaší MUNI OIDC aplikaci na:
+```
+http://localhost:3000/identity/connect/oidc-signin
+```
 
+## Funkce
 
-#### Organization member role
+Mapování rolí a organizací může být čteno z id tokenu nebo user info endpointu.
+Synchronizace se provádí ve výchozím nastavení při přihlášení a volitelně při obnovení tokenu (může být nákladné, protože klient může spamovat endpoint).
 
-Custom roles can be sent to set the organization member role. Only on role can be defined for all organization.
-If not present the user will be assigned the `User` membership.
+- `SSO_SYNC_ON_REFRESH`: Povolit obnovení rolí, orgů a skupin při refresh_token.
 
-Possible values include:
+### Mapování rolí
 
-- `OrgNoSync`: Disable all organization sync for this user.
-- `OrgOwner`: map to the `Owner` role, adding/removing this role has some requirements (is 2FA activated ? is-it the last `Owner` of the org ?).
-- `OrgAdmin`: map to the `Admin` role.
-- `OrgManager`: map to the custom role with with the ability to manage all collections.
-- `OrgUser`: default, `User` can be granted access to all on no collections.
+Umožňuje mapovat role z Access tokenu na uživatele pro udělení přístupu k `VaultWarden` `admin` konzoli.
+Podporuje dvě role: `admin` nebo `user`.
 
-If no role is provided it will default to `User` on invitation and no change will be made for existing member role.
+Tato funkce je kontrolována následující konfigurací:
 
-This feature is controlled with the following conf:
+- `SSO_ROLES_ENABLED`: kontroluje, zda se mapování provádí, výchozí je `false`
+- `SSO_ROLES_DEFAULT_TO_USER`: neblokovat přihlášení v případě chybějících nebo neplatných rolí, výchozí je `true`.
+- `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: cesta pro čtení rolí v id tokenu nebo user info (používá se i pro role členství v organizaci).
 
-- `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Access token (The feature is active even if `SSO_ROLES_ENABLED` is disabled).
-- `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: are `User` granted access to all collections, default is `true` (will apply only when the user membership role change).
+### Synchronizace organizací
 
-#### Organization groups
+Umožňuje synchronizovat Organizace, Skupiny a Role uživatelů.
 
-The groups will need to be created first. Then if present in the token user can be added/removed.
+#### Pozvánky do organizací
 
-This feature is controlled with the following conf:
+Organizace musí být nejprve ručně vytvořena.
+Bude použít email spojený s Organizací pro odesílání dalších notifikací (admin strana).
 
-- `ORG_GROUPS_ENABLED`: Need to be activated.
-- `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Need to be activated, It's here to prevent old setups to suddendly try to sync groups, will be considered as always activated soon and removed.
+Flow pozvánky bude vypadat takto:
 
-#### Organization and Group mapping
+- Dekódovat JWT Access token a zkontrolovat, zda je přítomen seznam organizací (výchozí cesta je `/groups`).
+- Zkontrolovat, zda existuje odpovídající Organizace a zda uživatel není její součástí.
+- pokud jsou povoleny maily, pozvat uživatele do Organizace
+  - Uživatel bude muset kliknout na odkaz v emailu, který obdržel
+  - Notifikace je odeslána na `email` spojený s Organizací, že nový uživatel je připraven připojit se
+  - Admin bude muset validovat uživatele pro dokončení připojení uživatele k org.
+- Jinak jen přidat uživatele do Organizace
+  - Admin bude muset validovat uživatele pro potvrzení připojení uživatele k org.
 
-There is multiple ways to match a given provider group value to an organization or a group.
-\
-Organizations (only when modifying it) and groups allow to set an `ExternalId` to help with this association.
+Jedním z bonusů pozvánky je, že pokud organizace definuje specifickou password policy, pak se bude aplikovat na nové uživatele, když si nastaví své nové master heslo.
+Pokud je uživatel součástí dvou organizací, pak je seřadí pomocí role uživatele (`Owner`, `Admin`, `User` nebo `Manager` pro nyní manager je poslední :() a vrátí password policy první.
 
-Depending on the format of the provider value different logic will be used:
+Tato funkce je kontrolována následující konfigurací:
 
-- simple `toto`:
-  - Will match an Organization with a matching `name` or `ExternalId`
-  - Will match a Group with a matching `ExternalId`.
-- path style: `/org/group` or `org/group` will match using only the names of the organization and group.
+- `SSO_SCOPES`: Volitelné scope override, pokud jsou potřeba dodatečné scopes, výchozí je `"email profile"`
+- `SSO_ORGANIZATIONS_ENABLED`: kontroluje, zda se mapování provádí, výchozí je `false`
+- `SSO_ORGANIZATIONS_TOKEN_PATH`: cesta pro čtení organizací a skupin v id tokenu nebo user info, výchozí je `/groups`
 
-Only the `path` style allows to match a group using its name. A simple value can match multiple Organization/Group, this will generate an error and disable sync.
-When matching a group then the user will be considered part of the parent Organization even if it's not listed in the provider groups.
+#### Odvolání organizací
+
+Pokud je uživatel odstraněn z provider skupiny, členství bude odvoláno. Uživatel ztratí přístup, ale nebude potřeba admin intervence pro udělení přístupu zpět.
+
+Stav členství je zachován (`invited`, `confirmed`, `accepted`) a bude obnoven, pokud je uživatel znovu přidán do skupiny/organizace.
+
+Tato funkce je kontrolována následující konfigurací:
+
+- `SSO_ORGANIZATIONS_REVOCATION`: kontroluje, zda se provádějí odvolání uživatelů (výchozí `false`).
+
+#### Role člena organizace
+
+Vlastní role mohou být odeslány pro nastavení role člena organizace. Pouze jedna role může být definována pro všechny organizace.
+Pokud není přítomna, uživateli bude přiřazena role `User`.
+
+Možné hodnoty zahrnují:
+
+- `OrgNoSync`: Zakázat všechnu synchronizaci organizací pro tohoto uživatele.
+- `OrgOwner`: mapovat na roli `Owner`, přidání/odebrání této role má některé požadavky (je 2FA aktivována? je to poslední `Owner` org?).
+- `OrgAdmin`: mapovat na roli `Admin`.
+- `OrgManager`: mapovat na vlastní roli se schopností spravovat všechny kolekce.
+- `OrgUser`: výchozí, `User` může být udělen přístup ke všem nebo žádným kolekcím.
+
+Pokud není poskytnuta žádná role, bude výchozí `User` při pozvánce a nebude provedena žádná změna pro existující roli člena.
+
+Tato funkce je kontrolována následující konfigurací:
+
+- `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: cesta pro čtení rolí v Access tokenu (Funkce je aktivní i když je `SSO_ROLES_ENABLED` zakázáno).
+- `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: jsou `User` udělen přístup ke všem kolekcím, výchozí je `true` (bude aplikováno pouze když se změní role členství uživatele).
+
+#### Skupiny organizací
+
+Skupiny budou muset být nejprve vytvořeny. Pak pokud jsou přítomny v tokenu, uživatelé mohou být přidáni/odebráni.
+
+Tato funkce je kontrolována následující konfigurací:
+
+- `ORG_GROUPS_ENABLED`: Musí být aktivováno.
+- `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Musí být aktivováno, Je zde pro zabránění starým nastavením náhle zkusit synchronizovat skupiny, bude bráno jako vždy aktivované brzy a odstraněno.
+
+#### Mapování organizací a skupin
+
+Existuje více způsobů, jak spárovat danou provider skupinovou hodnotu s organizací nebo skupinou.
+
+Organizace (pouze při modifikaci) a skupiny umožňují nastavit `ExternalId` pro pomoc s tímto spojením.
+
+V závislosti na formátu provider hodnoty budou použity různé logiky:
+
+- jednoduché `toto`:
+  - Spáruje Organizaci s odpovídajícím `name` nebo `ExternalId`
+  - Spáruje Skupinu s odpovídajícím `ExternalId`.
+- path style: `/org/group` nebo `org/group` spáruje pomocí pouze názvů organizace a skupiny.
+
+Pouze `path` style umožňuje spárovat skupinu pomocí jejího názvu. Jednoduchá hodnota může spárovat více Organizací/Skupin, to vygeneruje chybu a zakáže synchronizaci.
+Při spárování skupiny bude uživatel považován za součást nadřazené Organizace, i když není uveden v provider skupinách.
 
 #### Deprecations
 
-- `SSO_ORGANIZATIONS_INVITE`: Will be removed with the next release. replaced with `SSO_ORGANIZATIONS_ENABLED`.
-- `SSO_ORGANIZATIONS_ID_MAPPING` Will be removed with the next release. For now if present is still used, only Organization and User role mapping is done.
-- `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Will be removed with next release. Allow to keep group mapping deactivated (still dependant on `ORG_GROUPS_ENABLED`).
-  False initially to force opt-in to the feature.
+- `SSO_ORGANIZATIONS_INVITE`: Bude odstraněno s příštím release. Nahrazeno `SSO_ORGANIZATIONS_ENABLED`.
+- `SSO_ORGANIZATIONS_ID_MAPPING` Bude odstraněno s příštím release. Pro nyní pokud je přítomno, stále se používá, provádí se pouze mapování organizací a rolí uživatelů.
+- `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Bude odstraněno s příštím release. Umožňuje udržet mapování skupin zakázané (stále závislé na `ORG_GROUPS_ENABLED`).
+  False zpočátku pro vynucení opt-in k funkci.
+
+## Řešení problémů
+
+### Problémy s OIDC Discovery
+
+Pokud narazíte na chyby "Failed to discover OpenID provider":
+
+1. **Zkontrolujte Nginx Proxy**: Ujistěte se, že Nginx proxy běží na portu 8082
+   ```bash
+   curl http://localhost:8082/.well-known/openid-configuration
+   ```
+
+2. **Ověřte OIDC Authority**: Ujistěte se, že `SSO_AUTHORITY` směřuje na proxy (`http://localhost:8082/`)
+
+3. **Zkontrolujte Redirect URI**: Ujistěte se, že redirect URI ve vašem OIDC provideru přesně odpovídá:
+   ```
+   http://localhost:3000/identity/connect/oidc-signin
+   ```
+
+### Problémy s Docker Networking
+
+Pokud OIDCWarden nemůže dosáhnout na Nginx proxy:
+
+1. **Použijte Host IP**: Nahraďte `localhost` vaší host IP v `SSO_AUTHORITY`
+2. **Zkontrolujte stav kontejnerů**: `docker-compose ps`
+3. **Zobrazte logy**: `docker-compose logs -f`
+
+### Běžné chybové zprávy
+
+- **"Server returned invalid response: HTTP status code 500"**: Externí OIDC provider má problémy → Použijte Nginx proxy
+- **"Redirect URI does not match"**: Aktualizujte redirect URI v konfiguraci OIDC provideru
+- **"Query string failed to match route declaration"**: Normální pro přímý přístup k endpointu bez OIDC parametrů
 
 ## Docker
 
-Change the docker files to package both front-end from [Timshel/oidc_web_vault](https://github.com/Timshel/oidc_web_vault/releases).
-\
-By default it will use the release which only make the `sso` button visible.
+Změňte docker soubory pro balení obou front-endů z [Timshel/oidc_web_vault](https://github.com/Timshel/oidc_web_vault/releases).
 
-If you want to use the version with the additional features mentionned, default redirection to `/sso` and fix organization invitation.
-You need to pass an env variable: `-e SSO_FRONTEND='override'` (cf [start.sh](docker/start.sh)).
+Ve výchozím nastavení bude používat release, který pouze zviditelní tlačítko `sso`.
 
-Docker images available at:
+Pokud chcete použít verzi s dodatečnými funkcemi zmíněnými, výchozí přesměrování na `/sso` a oprava pozvánky do organizace.
+Musíte předat env proměnnou: `-e SSO_FRONTEND='override'` (viz [start.sh](docker/start.sh)).
+
+Docker images dostupné na:
 
  - Docker hub [hub.docker.com/r/timshel/oidcwarden](https://hub.docker.com/r/timshel/oidcwarden/tags)
  - Github container registry [ghcr.io/timshel/oidcwarden](https://github.com/Timshel/oidcwarden/pkgs/container/oidcwarden)
 
-### Front-end version
+### Front-end verze
 
-By default front-end version is fixed to prevent regression (check [CHANGELOG.md](CHANGELOG.md)).
-\
-When building the docker image it can be overrided by passing the `OIDC_WEB_RELEASE` arg.
-\
-Ex to build with latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_vault/releases/latest/download"`
+Ve výchozím nastavení je front-end verze fixována pro zabránění regresím (zkontrolujte [CHANGELOG.md](CHANGELOG.md)).
 
-## To test VaultWarden with Keycloak
+Při buildování docker image může být přepsána předáním `OIDC_WEB_RELEASE` arg.
+
+Např. pro build s latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_vault/releases/latest/download"`
+
+## Pro testování VaultWarden s Keycloak
 
 [Readme](docker/keycloak/README.md)
 
-## DB Migration
+## DB Migrace
 
-ATM The migrations add two tables `sso_nonce`, `sso_users` and a column `invited_by_email` to `users_organizations`.
+ATM Migrace přidávají dvě tabulky `sso_nonce`, `sso_users` a sloupec `invited_by_email` do `users_organizations`.
 
-### Revert to default VW
+### Návrat k výchozímu VW
 
-Reverting to the default VW DB state can easily be done manually (Make a backup :) :
+Návrat k výchozímu VW DB stavu lze snadno provést ručně (Udělejte zálohu :) :
 
 ```psql
 >BEGIN;
@@ -202,17 +301,17 @@ BEGIN
 >DROP TABLE sso_nonce;
 >DROP TABLE sso_users;
 >ALTER TABLE users_organizations DROP COLUMN invited_by_email;
->DROP INDEX organizations_external_id; -- only sqlite
+>DROP INDEX organizations_external_id; -- pouze sqlite
 >ALTER TABLE organizations DROP COLUMN external_id;
 > COMMIT / ROLLBACK;
 ```
 
-## Configuration
+## Konfigurace
 
 ### Zitadel
 
-To use the role mapping feature you will need to define a custom mapping to return a simple list of role.
-More details in Zitadel [documentation](https://zitadel.com/docs/guides/integrate/retrieve-user-roles#customize-roles-using-actions); the cutomization will look something like this:
+Pro použití funkce mapování rolí budete potřebovat definovat vlastní mapování pro vrácení jednoduchého seznamu rolí.
+Více detailů v Zitadel [dokumentaci](https://zitadel.com/docs/guides/integrate/retrieve-user-roles#customize-roles-using-actions); vlastní úprava bude vypadat nějak takto:
 
 ```javascript
 function flatRoles(ctx, api) {
