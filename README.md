@@ -1,7 +1,7 @@
 # OIDCWarden - CZS Interní Verze
 
 Soft fork z [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
-Cílem je poskytnout OIDC kompatibilní řešení pro interní použití v CZS (Centrum zpracování sítí).
+Cílem je poskytnout OIDC kompatibilní řešení pro interní použití v CZS (Centrum zahraniční spolupráce).
 
 Master heslo je stále vyžadováno a není kontrolováno SSO (v závislosti na vašem pohledu to může být funkce ;).
 
@@ -65,8 +65,6 @@ Hlavní rozdíly nyní:
 
 - Přejmenovaný projekt / změněné ikony
 - Schopnost vydávat `web-vault` nezávisle na [bw_web_builds](https://github.com/dani-garcia/bw_web_builds), [timshel/vaultwarden](https://github.com/timshel/vaultwarden) zůstane synchronizovaný.
-
-V dlouhodobém horizontu se distribuce zaměří na lepší OpenID flow (`web-vault` `override` distribuce).
 
 ## Testování
 
